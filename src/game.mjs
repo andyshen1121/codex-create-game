@@ -69,6 +69,55 @@ export function createGameState({ players = 2 } = {}) {
   };
 }
 
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function makeBullet(tank) {
+  const size = 6;
+  const speed = 200;
+  const centerX = tank.x + tank.w / 2 - size / 2;
+  const centerY = tank.y + tank.h / 2 - size / 2;
+  let vx = 0;
+  let vy = 0;
+  if (tank.dir === 'up') vy = -speed;
+  if (tank.dir === 'down') vy = speed;
+  if (tank.dir === 'left') vx = -speed;
+  if (tank.dir === 'right') vx = speed;
+  return { x: centerX, y: centerY, w: size, h: size, vx, vy, owner: tank.id };
+}
+
+function applyPlayerInput(state, input, dt) {
+  state.players.forEach((player, index) => {
+    const keys = input.players?.[index] || {};
+    const speed = player.speed;
+    let dx = 0;
+    let dy = 0;
+    if (keys.left) {
+      dx = -speed * dt;
+      player.dir = 'left';
+    } else if (keys.right) {
+      dx = speed * dt;
+      player.dir = 'right';
+    } else if (keys.up) {
+      dy = -speed * dt;
+      player.dir = 'up';
+    } else if (keys.down) {
+      dy = speed * dt;
+      player.dir = 'down';
+    }
+
+    player.x = clamp(player.x + dx, 0, MAP_W * TILE_SIZE - player.w);
+    player.y = clamp(player.y + dy, 0, MAP_H * TILE_SIZE - player.h);
+
+    player.cooldown = Math.max(0, player.cooldown - dt);
+    if (keys.fire && player.cooldown === 0) {
+      state.bullets.push(makeBullet(player));
+      player.cooldown = 0.4;
+    }
+  });
+}
+
 function tileAt(tiles, x, y) {
   const tileX = Math.floor(x / TILE_SIZE);
   const tileY = Math.floor(y / TILE_SIZE);
@@ -79,6 +128,7 @@ function tileAt(tiles, x, y) {
 }
 
 export function stepGame(state, input, dt) {
+  applyPlayerInput(state, input, dt);
   const nextBullets = [];
 
   for (const bullet of state.bullets) {
