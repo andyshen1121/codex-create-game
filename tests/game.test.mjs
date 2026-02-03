@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createGameState, rectsIntersect, stepGame, TILE_SIZE } from '../src/game.mjs';
+import { renderGame } from '../src/game.mjs';
 
 test('rectsIntersect returns true for overlapping rectangles', () => {
   const a = { x: 0, y: 0, w: 10, h: 10 };
@@ -96,4 +97,24 @@ test('game wins when no enemies remain and all spawned', () => {
   stepGame(state, { players: [] }, 0.1);
 
   assert.equal(state.mode, 'win');
+});
+
+test('renderGame draws base and players', () => {
+  const state = createGameState({ players: 1 });
+  const calls = [];
+  const ctx = {
+    fillStyle: '#000',
+    strokeStyle: '#000',
+    fillRect: (...args) => calls.push(['fillRect', ...args]),
+    strokeRect: (...args) => calls.push(['strokeRect', ...args]),
+    fillText: (...args) => calls.push(['fillText', ...args]),
+    save: () => {},
+    restore: () => {},
+    clearRect: (...args) => calls.push(['clearRect', ...args]),
+  };
+
+  renderGame(ctx, state);
+
+  const hasFillRect = calls.some((c) => c[0] === 'fillRect');
+  assert.equal(hasFillRect, true);
 });

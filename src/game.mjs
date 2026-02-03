@@ -164,6 +164,51 @@ export function stepGame(state, input, dt) {
   updateWinLose(state);
 }
 
+export function renderGame(ctx, state) {
+  ctx.clearRect(0, 0, MAP_W * TILE_SIZE, MAP_H * TILE_SIZE);
+
+  for (let y = 0; y < state.tiles.length; y += 1) {
+    for (let x = 0; x < state.tiles[y].length; x += 1) {
+      const tile = state.tiles[y][x];
+      if (tile === '.') continue;
+      if (tile === 'G') {
+        ctx.fillStyle = '#3b7a2a';
+      } else if (tile === 'B') {
+        ctx.fillStyle = '#b86b3a';
+      } else if (tile === 'S') {
+        ctx.fillStyle = '#888888';
+      } else if (tile === 'W') {
+        ctx.fillStyle = '#2a6fdb';
+      } else if (tile === 'X') {
+        ctx.fillStyle = '#d9c15b';
+      }
+      ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    }
+  }
+
+  ctx.fillStyle = '#d9c15b';
+  ctx.fillRect(state.base.x, state.base.y, state.base.w, state.base.h);
+
+  state.players.forEach((p) => {
+    ctx.fillStyle = '#4aa3ff';
+    ctx.fillRect(p.x, p.y, p.w, p.h);
+  });
+
+  state.enemies.forEach((e) => {
+    ctx.fillStyle = '#ff6b6b';
+    ctx.fillRect(e.x, e.y, e.w, e.h);
+  });
+
+  state.bullets.forEach((b) => {
+    ctx.fillStyle = '#f5f5f5';
+    ctx.fillRect(b.x, b.y, b.w, b.h);
+  });
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(`P1:${state.players[0]?.lives ?? 0}`, 10, 18);
+  ctx.fillText(`EN:${state.enemies.length}`, 80, 18);
+}
+
 function createEnemy(id, tileX, tileY, type = 'basic') {
   const size = 32;
   const speed = type === 'fast' ? 90 : type === 'heavy' ? 50 : 70;
