@@ -68,3 +68,40 @@ export function createGameState({ players = 2 } = {}) {
     mode: 'playing',
   };
 }
+
+function tileAt(tiles, x, y) {
+  const tileX = Math.floor(x / TILE_SIZE);
+  const tileY = Math.floor(y / TILE_SIZE);
+  if (tileX < 0 || tileY < 0 || tileY >= tiles.length || tileX >= tiles[0].length) {
+    return null;
+  }
+  return { tileX, tileY, value: tiles[tileY][tileX] };
+}
+
+export function stepGame(state, input, dt) {
+  const nextBullets = [];
+
+  for (const bullet of state.bullets) {
+    bullet.x += bullet.vx * dt;
+    bullet.y += bullet.vy * dt;
+
+    const hit = tileAt(state.tiles, bullet.x + bullet.w / 2, bullet.y + bullet.h / 2);
+    if (hit) {
+      if (hit.value === 'B') {
+        state.tiles[hit.tileY][hit.tileX] = '.';
+        continue;
+      }
+      if (hit.value === 'S') {
+        continue;
+      }
+      if (hit.value === 'X') {
+        state.mode = 'lose';
+        continue;
+      }
+    }
+
+    nextBullets.push(bullet);
+  }
+
+  state.bullets = nextBullets;
+}
