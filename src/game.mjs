@@ -65,6 +65,12 @@ export function createGameState({ players = 2 } = {}) {
     enemies: [],
     bullets: [],
     base,
+    spawner: {
+      remaining: 10,
+      cooldown: 1,
+      interval: 2,
+      points: [{ x: 9, y: 1 }, { x: 3, y: 1 }, { x: 15, y: 1 }],
+    },
     mode: 'playing',
   };
 }
@@ -129,6 +135,7 @@ function tileAt(tiles, x, y) {
 
 export function stepGame(state, input, dt) {
   applyPlayerInput(state, input, dt);
+  updateSpawner(state, dt);
   const nextBullets = [];
 
   for (const bullet of state.bullets) {
@@ -154,4 +161,43 @@ export function stepGame(state, input, dt) {
   }
 
   state.bullets = nextBullets;
+  updateWinLose(state);
+}
+
+function createEnemy(id, tileX, tileY, type = 'basic') {
+  const size = 32;
+  const speed = type === 'fast' ? 90 : type === 'heavy' ? 50 : 70;
+  const hp = type === 'heavy' ? 3 : 1;
+  return {
+    id,
+    x: tileX * TILE_SIZE + (TILE_SIZE - size) / 2,
+    y: tileY * TILE_SIZE + (TILE_SIZE - size) / 2,
+    w: size,
+    h: size,
+    dir: 'down',
+    speed,
+    hp,
+    cooldown: 0.8,
+    isPlayer: false,
+    aiTime: 0,
+  };
+}
+
+function updateSpawner(state, dt) {
+  if (!state.spawner || state.spawner.remaining <= 0) return;
+  state.spawner.cooldown -= dt;
+  if (state.spawner.cooldown > 0) return;
+
+  const point = state.spawner.points[0];
+  if (!point) return;
+  state.enemies.push(createEnemy(`e${Date.now()}`, point.x, point.y));
+  state.spawner.remaining -= 1;
+  state.spawner.cooldown = state.spawner.interval;
+}
+
+function updateWinLose(state) {
+  if (state.mode !== 'playing') return;
+  if (state.spawner && state.spawner.remaining === 0 && state.enemies.length === 0) {
+    state.mode = 'win';
+  }
 }

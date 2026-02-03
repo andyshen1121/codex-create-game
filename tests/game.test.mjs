@@ -77,3 +77,23 @@ test('player fires bullet when cooldown is ready', () => {
 
   assert.equal(state.bullets.length, 1);
 });
+
+test('spawner creates enemies until remaining is zero', () => {
+  const state = createGameState({ players: 1 });
+  state.spawner = { remaining: 1, cooldown: 0, interval: 0, points: [{ x: 1, y: 1 }] };
+
+  stepGame(state, { players: [] }, 0.1);
+
+  assert.equal(state.enemies.length, 1);
+  assert.equal(state.spawner.remaining, 0);
+});
+
+test('game wins when no enemies remain and all spawned', () => {
+  const state = createGameState({ players: 1 });
+  state.spawner = { remaining: 0, cooldown: 0, interval: 0, points: [] };
+  state.enemies = [];
+
+  stepGame(state, { players: [] }, 0.1);
+
+  assert.equal(state.mode, 'win');
+});
