@@ -198,3 +198,26 @@ test('bullet does not hit its owner', () => {
 
   assert.equal(state.players[0].hp, initialHp);
 });
+
+test('AI enemy moves in patrol mode', () => {
+  const state = createGameState({ players: 1 });
+  state.enemies.push({
+    id: 'e1',
+    x: 200,
+    y: 200,
+    w: 32,
+    h: 32,
+    dir: 'down',
+    speed: 70,
+    hp: 1,
+    cooldown: 1,
+    aiMode: 'patrol',
+    aiTime: 2,
+    targetDir: 'down',
+  });
+
+  const initialY = state.enemies[0].y;
+  stepGame(state, { players: [] }, 0.5);
+
+  assert.ok(state.enemies[0].y > initialY);
+});

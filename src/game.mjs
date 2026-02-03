@@ -151,6 +151,7 @@ function tileAt(tiles, x, y) {
 
 export function stepGame(state, input, dt) {
   applyPlayerInput(state, input, dt);
+  updateAI(state, dt);
   updateSpawner(state, dt);
   const nextBullets = [];
 
@@ -265,6 +266,7 @@ function createEnemy(id, tileX, tileY, type = 'basic') {
   const size = 32;
   const speed = type === 'fast' ? 90 : type === 'heavy' ? 50 : 70;
   const hp = type === 'heavy' ? 3 : 1;
+  const dirs = ['up', 'down', 'left', 'right'];
   return {
     id,
     x: tileX * TILE_SIZE + (TILE_SIZE - size) / 2,
@@ -276,7 +278,11 @@ function createEnemy(id, tileX, tileY, type = 'basic') {
     hp,
     cooldown: 0.8,
     isPlayer: false,
-    aiTime: 0,
+    aiMode: 'patrol',
+    aiTime: 2 + Math.random() * 2,
+    targetDir: dirs[Math.floor(Math.random() * 4)],
+    chaseTarget: null,
+    lostTargetTime: 0,
   };
 }
 
@@ -296,5 +302,73 @@ function updateWinLose(state) {
   if (state.mode !== 'playing') return;
   if (state.spawner && state.spawner.remaining === 0 && state.enemies.length === 0) {
     state.mode = 'win';
+  }
+}
+
+function collidesWithWall(tiles, entity) {
+  const corners = [
+    { x: entity.x, y: entity.y },
+    { x: entity.x + entity.w - 1, y: entity.y },
+    { x: entity.x, y: entity.y + entity.h - 1 },
+    { x: entity.x + entity.w - 1, y: entity.y + entity.h - 1 },
+  ];
+
+  for (const corner of corners) {
+    const tileX = Math.floor(corner.x / TILE_SIZE);
+    const tileY = Math.floor(corner.y / TILE_SIZE);
+    if (tileX < 0 || tileY < 0 || tileY >= tiles.length || tileX >= tiles[0].length) {
+      continue;
+    }
+    const tile = tiles[tileY][tileX];
+    if (tile === 'B' || tile === 'S' || tile === 'W') {
+      return true;
+    }
+  }
+  return false;
+}
+
+function updateAI(state, dt) {
+  const dirs = ['up', 'down', 'left', 'right'];
+
+  for (const enemy of state.enemies) {
+    // 更新计时器
+    enemy.aiTime -= dt;
+    enemy.cooldown = Math.max(0, enemy.cooldown - dt);
+
+    // 巡逻模式：时间到了换方向
+    if (enemy.aiMode === 'patrol') {
+      if (enemy.aiTime <= 0) {
+        enemy.targetDir = dirs[Math.floor(Math.random() * 4)];
+        enemy.aiTime = 2 + Math.random() * 2;
+      }
+
+      // 随机射击
+      if (enemy.cooldown === 0 && Math.random() < 0.02) {
+        state.bullets.push(makeBullet(enemy));
+        enemy.cooldown = 1 + Math.random();
+      }
+    }
+
+    // 移动
+    enemy.dir = enemy.targetDir;
+    let dx = 0;
+    let dy = 0;
+    if (enemy.dir === 'up') dy = -enemy.speed * dt;
+    if (enemy.dir === 'down') dy = enemy.speed * dt;
+    if (enemy.dir === 'left') dx = -enemy.speed * dt;
+    if (enemy.dir === 'right') dx = enemy.speed * dt;
+
+    const newX = clamp(enemy.x + dx, 0, MAP_W * TILE_SIZE - enemy.w);
+    const newY = clamp(enemy.y + dy, 0, MAP_H * TILE_SIZE - enemy.h);
+
+    // 检查墙体碰撞
+    if (!collidesWithWall(state.tiles, { ...enemy, x: newX, y: newY })) {
+      enemy.x = newX;
+      enemy.y = newY;
+    } else {
+      // 撞墙换方向
+      enemy.targetDir = dirs[Math.floor(Math.random() * 4)];
+      enemy.aiTime = 2 + Math.random() * 2;
+    }
   }
 }
