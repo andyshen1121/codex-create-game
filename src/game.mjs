@@ -185,6 +185,9 @@ export function stepGame(state, input, dt) {
     let hitTank = false;
     for (let i = state.enemies.length - 1; i >= 0; i--) {
       const enemy = state.enemies[i];
+      if (bullet.owner === enemy.id) {
+        continue;
+      }
       if (rectsIntersect(bullet, enemy)) {
         enemy.hp -= 1;
         if (enemy.hp <= 0) {
@@ -214,7 +217,20 @@ export function stepGame(state, input, dt) {
   }
 
   state.bullets = nextBullets;
+  updateBaseCapture(state, dt);
   updateWinLose(state);
+}
+
+function isInGrass(tiles, entity) {
+  const centerX = entity.x + entity.w / 2;
+  const centerY = entity.y + entity.h / 2;
+  const tileX = Math.floor(centerX / TILE_SIZE);
+  const tileY = Math.floor(centerY / TILE_SIZE);
+
+  if (tileY >= 0 && tileY < tiles.length && tileX >= 0 && tileX < tiles[0].length) {
+    return tiles[tileY][tileX] === 'G';
+  }
+  return false;
 }
 
 export function renderGame(ctx, state) {
@@ -239,17 +255,23 @@ export function renderGame(ctx, state) {
     }
   }
 
-  ctx.fillStyle = '#d9c15b';
-  ctx.fillRect(state.base.x, state.base.y, state.base.w, state.base.h);
+  if (state.base.available) {
+    ctx.fillStyle = '#d9c15b';
+    ctx.fillRect(state.base.x, state.base.y, state.base.w, state.base.h);
+  }
 
-  state.players.forEach((p) => {
-    ctx.fillStyle = '#4aa3ff';
-    ctx.fillRect(p.x, p.y, p.w, p.h);
+  state.players.forEach((p, index) => {
+    if (!isInGrass(state.tiles, p)) {
+      ctx.fillStyle = index === 0 ? '#4aa3ff' : '#4aff6b';
+      ctx.fillRect(p.x, p.y, p.w, p.h);
+    }
   });
 
   state.enemies.forEach((e) => {
-    ctx.fillStyle = '#ff6b6b';
-    ctx.fillRect(e.x, e.y, e.w, e.h);
+    if (!isInGrass(state.tiles, e)) {
+      ctx.fillStyle = '#ff6b6b';
+      ctx.fillRect(e.x, e.y, e.w, e.h);
+    }
   });
 
   state.bullets.forEach((b) => {
@@ -257,9 +279,33 @@ export function renderGame(ctx, state) {
     ctx.fillRect(b.x, b.y, b.w, b.h);
   });
 
+  ctx.font = '16px monospace';
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(`P1:${state.players[0]?.lives ?? 0}`, 10, 18);
-  ctx.fillText(`EN:${state.enemies.length}`, 80, 18);
+  ctx.fillText(`P1: ${'*'.repeat(state.players[0]?.hp ?? 0)}`, 10, 20);
+  if (state.players[1]) {
+    const p2Text = `P2: ${'*'.repeat(state.players[1].hp)}`;
+    ctx.fillText(p2Text, MAP_W * TILE_SIZE - 100, 20);
+  }
+
+  const base = state.base;
+  let baseStatus = '';
+  if (!base.available) {
+    baseStatus = `Base: ${Math.ceil(base.respawnCooldown)}s`;
+  } else if (base.capturingPlayer) {
+    const progress = Math.floor((base.captureProgress / 3) * 100);
+    baseStatus = `Capturing: ${progress}%`;
+  } else {
+    baseStatus = 'Base: Ready';
+  }
+  const textWidth = ctx.measureText(baseStatus).width;
+  ctx.fillText(baseStatus, (MAP_W * TILE_SIZE - textWidth) / 2, 20);
+
+  if (state.mode === 'win_p1' || state.mode === 'win_p2') {
+    ctx.font = '32px monospace';
+    const winner = state.mode === 'win_p1' ? 'Player 1 Wins!' : 'Player 2 Wins!';
+    const winWidth = ctx.measureText(winner).width;
+    ctx.fillText(winner, (MAP_W * TILE_SIZE - winWidth) / 2, MAP_H * TILE_SIZE / 2);
+  }
 }
 
 function createEnemy(id, tileX, tileY, type = 'basic') {
@@ -287,21 +333,34 @@ function createEnemy(id, tileX, tileY, type = 'basic') {
 }
 
 function updateSpawner(state, dt) {
-  if (!state.spawner || state.spawner.remaining <= 0) return;
+  if (!state.spawner) return;
+
   state.spawner.cooldown -= dt;
   if (state.spawner.cooldown > 0) return;
 
-  const point = state.spawner.points[0];
-  if (!point) return;
+  if (state.enemies.length >= state.spawner.maxActive) {
+    return;
+  }
+
+  const points = state.spawner.points;
+  if (!points || points.length === 0) return;
+
+  const point = points[Math.floor(Math.random() * points.length)];
   state.enemies.push(createEnemy(`e${Date.now()}`, point.x, point.y));
-  state.spawner.remaining -= 1;
   state.spawner.cooldown = state.spawner.interval;
 }
 
 function updateWinLose(state) {
   if (state.mode !== 'playing') return;
-  if (state.spawner && state.spawner.remaining === 0 && state.enemies.length === 0) {
-    state.mode = 'win';
+
+  if (state.players.length >= 2) {
+    if (state.players[0].hp <= 0) {
+      state.mode = 'win_p2';
+      return;
+    }
+    if (state.players[1].hp <= 0) {
+      state.mode = 'win_p1';
+    }
   }
 }
 
@@ -449,5 +508,48 @@ function updateAI(state, dt) {
       enemy.targetDir = dirs[Math.floor(Math.random() * 4)];
       enemy.aiTime = 2 + Math.random() * 2;
     }
+  }
+}
+
+function updateBaseCapture(state, dt) {
+  const base = state.base;
+
+  if (!base.available) {
+    base.respawnCooldown -= dt;
+    if (base.respawnCooldown <= 0) {
+      base.available = true;
+      base.respawnCooldown = 0;
+      base.captureProgress = 0;
+      base.capturingPlayer = null;
+    }
+    return;
+  }
+
+  let playerOnBase = null;
+  for (const player of state.players) {
+    if (player.hp > 0 && rectsIntersect(player, base)) {
+      playerOnBase = player;
+      break;
+    }
+  }
+
+  if (playerOnBase) {
+    if (base.capturingPlayer === playerOnBase.id) {
+      base.captureProgress += dt;
+    } else {
+      base.capturingPlayer = playerOnBase.id;
+      base.captureProgress = dt;
+    }
+
+    if (base.captureProgress >= 3) {
+      playerOnBase.hp = Math.min(3, playerOnBase.hp + 1);
+      base.available = false;
+      base.respawnCooldown = 15;
+      base.captureProgress = 0;
+      base.capturingPlayer = null;
+    }
+  } else {
+    base.captureProgress = 0;
+    base.capturingPlayer = null;
   }
 }

@@ -80,24 +80,20 @@ test('player fires bullet when cooldown is ready', () => {
   assert.equal(state.bullets.length, 1);
 });
 
-test('spawner creates enemies until remaining is zero', () => {
+test('spawner respects maxActive', () => {
   const state = createGameState({ players: 1 });
-  state.spawner = { remaining: 1, cooldown: 0, interval: 0, points: [{ x: 1, y: 1 }] };
+  state.spawner = {
+    cooldown: 0,
+    interval: 0,
+    maxActive: 1,
+    points: [{ x: 1, y: 1 }, { x: 2, y: 2 }],
+  };
 
   stepGame(state, { players: [] }, 0.1);
-
   assert.equal(state.enemies.length, 1);
-  assert.equal(state.spawner.remaining, 0);
-});
-
-test('game wins when no enemies remain and all spawned', () => {
-  const state = createGameState({ players: 1 });
-  state.spawner = { remaining: 0, cooldown: 0, interval: 0, points: [] };
-  state.enemies = [];
 
   stepGame(state, { players: [] }, 0.1);
-
-  assert.equal(state.mode, 'win');
+  assert.equal(state.enemies.length, 1);
 });
 
 test('renderGame draws base and players', () => {
@@ -109,6 +105,7 @@ test('renderGame draws base and players', () => {
     fillRect: (...args) => calls.push(['fillRect', ...args]),
     strokeRect: (...args) => calls.push(['strokeRect', ...args]),
     fillText: (...args) => calls.push(['fillText', ...args]),
+    measureText: (text) => ({ width: text.length * 8 }),
     save: () => {},
     restore: () => {},
     clearRect: (...args) => calls.push(['clearRect', ...args]),
@@ -131,6 +128,42 @@ test('base starts as capturable with no owner', () => {
   assert.equal(state.base.available, true);
   assert.equal(state.base.owner, null);
   assert.equal(state.base.captureProgress, 0);
+  assert.equal(state.base.respawnCooldown, 0);
+});
+
+test('player standing on base increases capture progress', () => {
+  const state = createGameState({ players: 1 });
+  state.players[0].x = state.base.x;
+  state.players[0].y = state.base.y;
+
+  stepGame(state, { players: [] }, 1);
+
+  assert.ok(state.base.captureProgress > 0);
+  assert.equal(state.base.capturingPlayer, 'p1');
+});
+
+test('capturing base heals player by 1 hp', () => {
+  const state = createGameState({ players: 1 });
+  state.players[0].hp = 2;
+  state.players[0].x = state.base.x;
+  state.players[0].y = state.base.y;
+  state.base.captureProgress = 2.9;
+  state.base.capturingPlayer = 'p1';
+
+  stepGame(state, { players: [] }, 0.2);
+
+  assert.equal(state.players[0].hp, 3);
+  assert.equal(state.base.available, false);
+});
+
+test('base respawns after cooldown', () => {
+  const state = createGameState({ players: 1 });
+  state.base.available = false;
+  state.base.respawnCooldown = 0.1;
+
+  stepGame(state, { players: [] }, 0.2);
+
+  assert.equal(state.base.available, true);
   assert.equal(state.base.respawnCooldown, 0);
 });
 
@@ -197,6 +230,24 @@ test('bullet does not hit its owner', () => {
   stepGame(state, { players: [] }, 0.1);
 
   assert.equal(state.players[0].hp, initialHp);
+});
+
+test('p2 wins when p1 hp reaches 0', () => {
+  const state = createGameState({ players: 2 });
+  state.players[0].hp = 0;
+
+  stepGame(state, { players: [] }, 0.1);
+
+  assert.equal(state.mode, 'win_p2');
+});
+
+test('p1 wins when p2 hp reaches 0', () => {
+  const state = createGameState({ players: 2 });
+  state.players[1].hp = 0;
+
+  stepGame(state, { players: [] }, 0.1);
+
+  assert.equal(state.mode, 'win_p1');
 });
 
 test('AI enemy moves in patrol mode', () => {
