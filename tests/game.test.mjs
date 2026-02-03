@@ -133,3 +133,68 @@ test('base starts as capturable with no owner', () => {
   assert.equal(state.base.captureProgress, 0);
   assert.equal(state.base.respawnCooldown, 0);
 });
+
+test('bullet hitting enemy reduces enemy hp', () => {
+  const state = createGameState({ players: 1 });
+  state.enemies.push({
+    id: 'e1',
+    x: 200,
+    y: 200,
+    w: 32,
+    h: 32,
+    hp: 1,
+  });
+  state.bullets.push({
+    x: 210,
+    y: 210,
+    w: 6,
+    h: 6,
+    vx: 0,
+    vy: 0,
+    owner: 'p1',
+  });
+
+  stepGame(state, { players: [] }, 0.1);
+
+  assert.equal(state.enemies.length, 0);
+  assert.equal(state.bullets.length, 0);
+});
+
+test('bullet from p1 hitting p2 reduces p2 hp', () => {
+  const state = createGameState({ players: 2 });
+  state.players[1].x = 200;
+  state.players[1].y = 200;
+  state.bullets.push({
+    x: 210,
+    y: 210,
+    w: 6,
+    h: 6,
+    vx: 0,
+    vy: 0,
+    owner: 'p1',
+  });
+
+  const initialHp = state.players[1].hp;
+  stepGame(state, { players: [] }, 0.1);
+
+  assert.equal(state.players[1].hp, initialHp - 1);
+  assert.equal(state.bullets.length, 0);
+});
+
+test('bullet does not hit its owner', () => {
+  const state = createGameState({ players: 1 });
+  state.bullets.push({
+    x: state.players[0].x + 5,
+    y: state.players[0].y + 5,
+    w: 6,
+    h: 6,
+    vx: 0,
+    vy: 0,
+    owner: 'p1',
+  });
+
+  const initialHp = state.players[0].hp;
+  stepGame(state, { players: [] }, 0.1);
+
+  assert.equal(state.players[0].hp, initialHp);
+});

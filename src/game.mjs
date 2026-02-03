@@ -158,6 +158,13 @@ export function stepGame(state, input, dt) {
     bullet.x += bullet.vx * dt;
     bullet.y += bullet.vy * dt;
 
+    // 边界检测
+    if (bullet.x < 0 || bullet.x > MAP_W * TILE_SIZE ||
+        bullet.y < 0 || bullet.y > MAP_H * TILE_SIZE) {
+      continue;
+    }
+
+    // 地图碰撞
     const hit = tileAt(state.tiles, bullet.x + bullet.w / 2, bullet.y + bullet.h / 2);
     if (hit) {
       if (hit.value === 'B') {
@@ -171,6 +178,35 @@ export function stepGame(state, input, dt) {
         state.mode = 'lose';
         continue;
       }
+    }
+
+    // 击中敌人
+    let hitTank = false;
+    for (let i = state.enemies.length - 1; i >= 0; i--) {
+      const enemy = state.enemies[i];
+      if (rectsIntersect(bullet, enemy)) {
+        enemy.hp -= 1;
+        if (enemy.hp <= 0) {
+          state.enemies.splice(i, 1);
+        }
+        hitTank = true;
+        break;
+      }
+    }
+
+    // 击中玩家（不能击中自己）
+    if (!hitTank) {
+      for (const player of state.players) {
+        if (player.id !== bullet.owner && rectsIntersect(bullet, player)) {
+          player.hp -= 1;
+          hitTank = true;
+          break;
+        }
+      }
+    }
+
+    if (hitTank) {
+      continue;
     }
 
     nextBullets.push(bullet);
