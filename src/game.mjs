@@ -327,6 +327,51 @@ function collidesWithWall(tiles, entity) {
   return false;
 }
 
+export function checkLineOfSight(tiles, from, to, maxTiles) {
+  const fromCenterX = from.x + from.w / 2;
+  const fromCenterY = from.y + from.h / 2;
+  const toCenterX = to.x + to.w / 2;
+  const toCenterY = to.y + to.h / 2;
+
+  const dx = toCenterX - fromCenterX;
+  const dy = toCenterY - fromCenterY;
+  const distance = Math.sqrt(dx * dx + dy * dy);
+  const maxDistance = maxTiles * TILE_SIZE;
+
+  // 超出视野范围
+  if (distance > maxDistance) {
+    return false;
+  }
+
+  // 检查目标是否在草地中
+  const toTileX = Math.floor(toCenterX / TILE_SIZE);
+  const toTileY = Math.floor(toCenterY / TILE_SIZE);
+  if (toTileY >= 0 && toTileY < tiles.length && toTileX >= 0 && toTileX < tiles[0].length) {
+    if (tiles[toTileY][toTileX] === 'G') {
+      return false;
+    }
+  }
+
+  // 沿射线检查墙体
+  const steps = Math.ceil(distance / (TILE_SIZE / 2));
+  for (let i = 1; i < steps; i++) {
+    const t = i / steps;
+    const checkX = fromCenterX + dx * t;
+    const checkY = fromCenterY + dy * t;
+    const tileX = Math.floor(checkX / TILE_SIZE);
+    const tileY = Math.floor(checkY / TILE_SIZE);
+
+    if (tileY >= 0 && tileY < tiles.length && tileX >= 0 && tileX < tiles[0].length) {
+      const tile = tiles[tileY][tileX];
+      if (tile === 'B' || tile === 'S') {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 function updateAI(state, dt) {
   const dirs = ['up', 'down', 'left', 'right'];
 

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createGameState, rectsIntersect, stepGame, TILE_SIZE } from '../src/game.mjs';
+import { createGameState, rectsIntersect, stepGame, TILE_SIZE, checkLineOfSight } from '../src/game.mjs';
 import { renderGame } from '../src/game.mjs';
 
 test('rectsIntersect returns true for overlapping rectangles', () => {
@@ -220,4 +220,54 @@ test('AI enemy moves in patrol mode', () => {
   stepGame(state, { players: [] }, 0.5);
 
   assert.ok(state.enemies[0].y > initialY);
+});
+
+test('checkLineOfSight returns true when no wall between', () => {
+  const state = createGameState({ players: 1 });
+  // 清空地图便于测试
+  for (let y = 0; y < state.tiles.length; y++) {
+    for (let x = 0; x < state.tiles[y].length; x++) {
+      state.tiles[y][x] = '.';
+    }
+  }
+
+  const enemy = { x: 200, y: 200, w: 32, h: 32, dir: 'right' };
+  const player = { x: 280, y: 200, w: 32, h: 32 };
+
+  const result = checkLineOfSight(state.tiles, enemy, player, 5);
+  assert.equal(result, true);
+});
+
+test('checkLineOfSight returns false when wall blocks view', () => {
+  const state = createGameState({ players: 1 });
+  for (let y = 0; y < state.tiles.length; y++) {
+    for (let x = 0; x < state.tiles[y].length; x++) {
+      state.tiles[y][x] = '.';
+    }
+  }
+  // 在中间放一堵墙
+  state.tiles[5][6] = 'B';
+
+  const enemy = { x: 200, y: 200, w: 32, h: 32, dir: 'right' };
+  const player = { x: 280, y: 200, w: 32, h: 32 };
+
+  const result = checkLineOfSight(state.tiles, enemy, player, 5);
+  assert.equal(result, false);
+});
+
+test('checkLineOfSight returns false when target is in grass', () => {
+  const state = createGameState({ players: 1 });
+  for (let y = 0; y < state.tiles.length; y++) {
+    for (let x = 0; x < state.tiles[y].length; x++) {
+      state.tiles[y][x] = '.';
+    }
+  }
+  // 玩家位置放草地
+  state.tiles[5][7] = 'G';
+
+  const enemy = { x: 200, y: 200, w: 32, h: 32, dir: 'right' };
+  const player = { x: 280, y: 200, w: 32, h: 32 };
+
+  const result = checkLineOfSight(state.tiles, enemy, player, 5);
+  assert.equal(result, false);
 });
