@@ -43,7 +43,7 @@ function createPlayer(id, tileX, tileY) {
     h: size,
     dir: 'up',
     speed: 80,
-    hp: 1,
+    hp: 3,
     lives: 3,
     cooldown: 0,
     isPlayer: true,
@@ -52,7 +52,17 @@ function createPlayer(id, tileX, tileY) {
 
 export function createGameState({ players = 2 } = {}) {
   const tiles = parseLevel(LEVEL_1);
-  const base = { tileX: 9, tileY: 9, w: 32, h: 32 };
+  const base = {
+    tileX: 9,
+    tileY: 9,
+    w: 32,
+    h: 32,
+    available: true,
+    owner: null,
+    captureProgress: 0,
+    capturingPlayer: null,
+    respawnCooldown: 0,
+  };
   base.x = base.tileX * TILE_SIZE + (TILE_SIZE - base.w) / 2;
   base.y = base.tileY * TILE_SIZE + (TILE_SIZE - base.h) / 2;
 

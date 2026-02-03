@@ -119,3 +119,17 @@ test('renderGame draws base and players', () => {
   const hasFillRect = calls.some((c) => c[0] === 'fillRect');
   assert.equal(hasFillRect, true);
 });
+
+test('player starts with 3 hp', () => {
+  const state = createGameState({ players: 2 });
+  assert.equal(state.players[0].hp, 3);
+  assert.equal(state.players[1].hp, 3);
+});
+
+test('base starts as capturable with no owner', () => {
+  const state = createGameState({ players: 2 });
+  assert.equal(state.base.available, true);
+  assert.equal(state.base.owner, null);
+  assert.equal(state.base.captureProgress, 0);
+  assert.equal(state.base.respawnCooldown, 0);
+});
