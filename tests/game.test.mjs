@@ -271,3 +271,38 @@ test('checkLineOfSight returns false when target is in grass', () => {
   const result = checkLineOfSight(state.tiles, enemy, player, 5);
   assert.equal(result, false);
 });
+
+test('AI switches to chase mode when seeing player', () => {
+  const state = createGameState({ players: 1 });
+  // 清空地图
+  for (let y = 0; y < state.tiles.length; y++) {
+    for (let x = 0; x < state.tiles[y].length; x++) {
+      state.tiles[y][x] = '.';
+    }
+  }
+
+  state.players[0].x = 300;
+  state.players[0].y = 200;
+
+  state.enemies.push({
+    id: 'e1',
+    x: 200,
+    y: 200,
+    w: 32,
+    h: 32,
+    dir: 'right',
+    speed: 70,
+    hp: 1,
+    cooldown: 1,
+    aiMode: 'patrol',
+    aiTime: 2,
+    targetDir: 'right',
+    chaseTarget: null,
+    lostTargetTime: 0,
+  });
+
+  stepGame(state, { players: [] }, 0.1);
+
+  assert.equal(state.enemies[0].aiMode, 'chase');
+  assert.equal(state.enemies[0].chaseTarget, 'p1');
+});

@@ -376,42 +376,76 @@ function updateAI(state, dt) {
   const dirs = ['up', 'down', 'left', 'right'];
 
   for (const enemy of state.enemies) {
-    // 更新计时器
     enemy.aiTime -= dt;
     enemy.cooldown = Math.max(0, enemy.cooldown - dt);
 
-    // 巡逻模式：时间到了换方向
+    // 检测视野内的玩家
+    let visiblePlayer = null;
+    for (const player of state.players) {
+      if (player.hp > 0 && checkLineOfSight(state.tiles, enemy, player, 5)) {
+        visiblePlayer = player;
+        break;
+      }
+    }
+
+    // 状态切换
+    if (visiblePlayer) {
+      enemy.aiMode = 'chase';
+      enemy.chaseTarget = visiblePlayer.id;
+      enemy.lostTargetTime = 0;
+    } else if (enemy.aiMode === 'chase') {
+      enemy.lostTargetTime += dt;
+      if (enemy.lostTargetTime >= 3) {
+        enemy.aiMode = 'patrol';
+        enemy.chaseTarget = null;
+        enemy.aiTime = 2 + Math.random() * 2;
+        enemy.targetDir = dirs[Math.floor(Math.random() * 4)];
+      }
+    }
+
+    // 行为执行
     if (enemy.aiMode === 'patrol') {
       if (enemy.aiTime <= 0) {
         enemy.targetDir = dirs[Math.floor(Math.random() * 4)];
         enemy.aiTime = 2 + Math.random() * 2;
       }
-
-      // 随机射击
       if (enemy.cooldown === 0 && Math.random() < 0.02) {
         state.bullets.push(makeBullet(enemy));
         enemy.cooldown = 1 + Math.random();
       }
+      enemy.dir = enemy.targetDir;
+    } else if (enemy.aiMode === 'chase') {
+      const target = state.players.find((p) => p.id === enemy.chaseTarget);
+      if (target) {
+        const dx = target.x - enemy.x;
+        const dy = target.y - enemy.y;
+        if (Math.abs(dx) > Math.abs(dy)) {
+          enemy.dir = dx > 0 ? 'right' : 'left';
+        } else {
+          enemy.dir = dy > 0 ? 'down' : 'up';
+        }
+        if (enemy.cooldown === 0) {
+          state.bullets.push(makeBullet(enemy));
+          enemy.cooldown = 0.8;
+        }
+      }
     }
 
     // 移动
-    enemy.dir = enemy.targetDir;
-    let dx = 0;
-    let dy = 0;
-    if (enemy.dir === 'up') dy = -enemy.speed * dt;
-    if (enemy.dir === 'down') dy = enemy.speed * dt;
-    if (enemy.dir === 'left') dx = -enemy.speed * dt;
-    if (enemy.dir === 'right') dx = enemy.speed * dt;
+    let moveX = 0;
+    let moveY = 0;
+    if (enemy.dir === 'up') moveY = -enemy.speed * dt;
+    if (enemy.dir === 'down') moveY = enemy.speed * dt;
+    if (enemy.dir === 'left') moveX = -enemy.speed * dt;
+    if (enemy.dir === 'right') moveX = enemy.speed * dt;
 
-    const newX = clamp(enemy.x + dx, 0, MAP_W * TILE_SIZE - enemy.w);
-    const newY = clamp(enemy.y + dy, 0, MAP_H * TILE_SIZE - enemy.h);
+    const newX = clamp(enemy.x + moveX, 0, MAP_W * TILE_SIZE - enemy.w);
+    const newY = clamp(enemy.y + moveY, 0, MAP_H * TILE_SIZE - enemy.h);
 
-    // 检查墙体碰撞
     if (!collidesWithWall(state.tiles, { ...enemy, x: newX, y: newY })) {
       enemy.x = newX;
       enemy.y = newY;
-    } else {
-      // 撞墙换方向
+    } else if (enemy.aiMode === 'patrol') {
       enemy.targetDir = dirs[Math.floor(Math.random() * 4)];
       enemy.aiTime = 2 + Math.random() * 2;
     }
