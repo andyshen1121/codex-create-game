@@ -12,21 +12,21 @@ export const MAP_W = 20;
 export const MAP_H = 15;
 
 const LEVEL_1 = [
-  '....................',
-  '..B....B....B....B..',
-  '..B....B....B....B..',
-  '....................',
-  '.S..S......S..S.....',
-  '..GGGG..............',
-  '...B......B......B..',
-  '....................',
-  '..S.....W.W.....S...',
-  '....................',
-  '...B..B......B..B...',
-  '....................',
-  '.....BBBB....BBBB...',
-  '........X...........',
-  '....................',
+  '.......GGG..........',
+  '..B..B.....B..B.....',
+  '..B..B.....B..B.....',
+  '.........S..........',
+  '..S..........S......',
+  '.......GGG..........',
+  '....B.......B.......',
+  '.......GGG..........',
+  '..S..........S......',
+  '.........X..........',
+  '..S..........S......',
+  '.......GGG..........',
+  '....B.......B.......',
+  '.......GGG..........',
+  '..B..B.....B..B.....',
 ];
 
 function parseLevel(rows) {
@@ -52,12 +52,12 @@ function createPlayer(id, tileX, tileY) {
 
 export function createGameState({ players = 2 } = {}) {
   const tiles = parseLevel(LEVEL_1);
-  const base = { tileX: 8, tileY: 13, w: 32, h: 32 };
+  const base = { tileX: 9, tileY: 9, w: 32, h: 32 };
   base.x = base.tileX * TILE_SIZE + (TILE_SIZE - base.w) / 2;
   base.y = base.tileY * TILE_SIZE + (TILE_SIZE - base.h) / 2;
 
-  const list = [createPlayer('p1', 3, 13)];
-  if (players > 1) list.push(createPlayer('p2', 15, 13));
+  const list = [createPlayer('p1', 1, 13)];
+  if (players > 1) list.push(createPlayer('p2', 18, 1));
 
   return {
     tiles,
@@ -68,8 +68,14 @@ export function createGameState({ players = 2 } = {}) {
     spawner: {
       remaining: 10,
       cooldown: 1,
-      interval: 2,
-      points: [{ x: 9, y: 1 }, { x: 3, y: 1 }, { x: 15, y: 1 }],
+      interval: 5,
+      maxActive: 3,
+      points: [
+        { x: 0, y: 7 },
+        { x: 19, y: 7 },
+        { x: 9, y: 0 },
+        { x: 9, y: 14 },
+      ],
     },
     mode: 'playing',
   };

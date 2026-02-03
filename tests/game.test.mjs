@@ -18,9 +18,9 @@ test('rectsIntersect returns false for separated rectangles', () => {
 test('createGameState creates requested players and base position', () => {
   const state = createGameState({ players: 2 });
   assert.equal(state.players.length, 2);
-  assert.equal(state.base.tileX, 8);
-  assert.equal(state.base.tileY, 13);
-  assert.equal(state.tiles[13][8], 'X');
+  assert.equal(state.base.tileX, 9);
+  assert.equal(state.base.tileY, 9);
+  assert.equal(state.tiles[9][9], 'X');
   assert.equal(TILE_SIZE, 40);
 });
 
